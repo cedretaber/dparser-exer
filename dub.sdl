@@ -1,0 +1,5 @@
+name "dparser"
+description "A small parser written by D."
+authors "cedretaber"
+copyright "Copyright © 2019, cedretaber"
+license "proprietary"
