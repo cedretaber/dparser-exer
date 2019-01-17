@@ -1,6 +1,6 @@
 # Parser
 
-A parser generator written in D.
+A parser combinator written in D.
 
 - Class base
 - Function base
