@@ -8,6 +8,15 @@ import dparser.pair;
 import dparser.parser;
 import dparser.result;
 
+unittest
+{
+    auto e = new E;
+
+    assert(e("42+99").toSuccess.value == 141);
+    assert(e("1+2*3+4").toSuccess.value == 11);
+    assert(e("(1+2)*(3+4)").toSuccess.value == 21);
+}
+
 class E: Parser!int
 {
     override

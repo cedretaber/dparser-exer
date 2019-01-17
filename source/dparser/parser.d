@@ -75,6 +75,20 @@ class StringParser: Parser!string
     }
 }
 
+unittest
+{
+    auto res = str("Hello")("Hello, world!").toSuccess;
+    assert(res.value == "Hello");
+    assert(res.next == ", world!");
+
+    auto res2 = str("Hello, ")("world!");
+    assert(res2.isFailure);
+
+    auto res3 = str("Hello, ")("Hello, world!").toSuccess;
+    assert(res3.value == "Hello, ");
+    assert(res3.next == "world!");
+}
+
 /**
  * 利便性のための正規表現パーザ。
  */
@@ -100,6 +114,13 @@ class RegexParser: Parser!string
             return failure!string("expected: " ~ this.literal, input);
         }
     }
+}
+
+unittest
+{
+    auto res = reg("[0-9]+")("123-456").toSuccess;
+    assert(res.value == "123");
+    assert(res.next == "-456");
 }
 
 class Cat(X, Y): Parser!(Pair!(X, Y))
@@ -179,6 +200,23 @@ class Rep(T): Parser!(T[])
     }
 }
 
+unittest
+{
+    auto repp = str("Hello").rep!string;
+
+    auto res1 = repp("HelloHelloHello").toSuccess;
+    assert(res1.value == ["Hello", "Hello", "Hello"]);
+    assert(res1.next == "");
+
+    auto res2 = repp("HelloHelloHelloWorld").toSuccess;
+    assert(res2.value == ["Hello", "Hello", "Hello"]);
+    assert(res2.next == "World");
+
+    auto res3 = repp("").toSuccess;
+    assert(res3.value == []);
+    assert(res3.next == "");
+}
+
 class Map(T, U): Parser!U
 {
     Parser!T parser;
@@ -197,6 +235,15 @@ class Map(T, U): Parser!U
         auto succ = result.toSuccess;
         return success(f(succ.value), succ.next);
     }
+}
+
+unittest
+{
+    import std.conv: to;
+
+    auto res = str("123").map!string(s => s.to!int)("123456").toSuccess;
+    assert(res.value == 123);
+    assert(res.next == "456");
 }
 
 class Chainl(T, U): Parser!T
@@ -222,4 +269,16 @@ class Chainl(T, U): Parser!T
     Result!T opCall(in string input) {
         return this.parser(input);
     }
+}
+
+unittest
+{
+    import std.conv: to;
+    
+    auto res = 
+		reg("[0-9]+").map!string(s => s.to!int)
+			.chainl(str("+").map!(string, int delegate(int, int))(_ => (a, b) => a + b))("1+2+3")
+            .toSuccess;
+    assert(res.value == 6);
+    assert(res.next == "");
 }

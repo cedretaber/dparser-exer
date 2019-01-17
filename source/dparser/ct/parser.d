@@ -34,6 +34,15 @@ Result!string stringParser(string literal)(in string input)
 
 alias s = stringParser;
 
+unittest
+{
+
+    auto hello = &s!("Hello");
+    auto res = hello("Hello, world!").toSuccess;
+    assert(res.value == "Hello");
+    assert(res.next == ", world!");
+}
+
 /**
  * 利便性の為の正規表現パーザ。
  */
@@ -52,6 +61,14 @@ Result!string regexParser(string literal)(in string input)
 }
 
 alias reg = regexParser;
+
+unittest
+{
+    auto f = &reg!("[0-9]+");
+    auto res1 = f("123-4567").toSuccess;
+    assert(res1.value == "123");
+    assert(res1.next == "-4567");
+}
 
 template seq(alias left, alias right)
 {
@@ -75,6 +92,17 @@ template seq(alias left, alias right)
     }
 }
 
+unittest
+{
+
+    auto res1 = seq!(s!("Hello, "), s!("world!"))("Hello, world!").toSuccess;
+    assert(res1.value == pair("Hello, ", "world!"));
+    assert(res1.next == "");
+
+    auto res2 = seq!(s!"hoge", s!"fuga")("hogehoge");
+    assert(res2.isFailure);
+}
+
 template alt(alias left, alias right)
 if(is(ReturnType!left == ReturnType!right))
 {
@@ -86,6 +114,21 @@ if(is(ReturnType!left == ReturnType!right))
         if (result.isSuccess) return result;
         return right(input);
     }
+}
+
+unittest
+{
+    auto f = &alt!(s!"Hello", s!"World");
+    auto res1 = f("Hello, world!").toSuccess;
+    assert(res1.value == "Hello");
+    assert(res1.next == ", world!");
+
+    auto res2 = f("WorldHello").toSuccess;
+    assert(res2.value == "World");
+    assert(res2.next == "Hello");
+
+    auto res3 = f("hogehoge");
+    assert(res3.isFailure);
 }
 
 template rep(alias parser)
@@ -115,6 +158,27 @@ template rep(alias parser)
     }
 }
 
+unittest
+{
+    auto f = &rep!(s!"Hello");
+
+    auto res1 = f("Hello, world!").toSuccess;
+    assert(res1.value == ["Hello"]);
+    assert(res1.next == ", world!");
+
+    auto res2 = f("HelloHelloHello").toSuccess;
+    assert(res2.value == ["Hello", "Hello", "Hello"]);
+    assert(res2.next == "");
+
+    auto res3 = f("HelloHelloHelloWorld").toSuccess;
+    assert(res3.value == ["Hello", "Hello", "Hello"]);
+    assert(res3.next == "World");
+
+    auto res4 = f("WorldHello").toSuccess;
+    assert(res4.value == []);
+    assert(res4.next == "WorldHello");
+}
+
 template map(alias parser, alias fun)
 {
     alias f = binaryFun!fun;
@@ -130,6 +194,16 @@ template map(alias parser, alias fun)
     }
 }
 
+unittest
+{
+    import std.conv: to;
+
+    auto f = &map!(s!"123", s => s.to!int);
+    auto res1 = f("1234567").toSuccess;
+    assert(res1.value == 123);
+    assert(res1.next == "4567");
+}
+
 template chainl(alias p, alias op)
 {
     import std.algorithm.iteration;
@@ -139,4 +213,16 @@ template chainl(alias p, alias op)
             seq!(p, rep!(seq!(op, p))),
             vs => reduce!((acc, r) => r.left(acc, r.right))(vs.left, vs.right)
         );
+}
+
+unittest
+{
+    import std.conv;
+
+    auto f = &chainl!(
+        map!(reg!"[0-9]+", s => s.to!int),
+        map!(s!"+", _ => (int a, int b) => a + b)
+    );
+    auto res1 = f("1+2+3").toSuccess;
+    assert(res1.value == 6);
 }
