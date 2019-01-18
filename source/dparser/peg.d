@@ -67,6 +67,14 @@ class N: Parser!int
 {
     override
     Result!int opCall(in string input) {
-        return reg("[0-9]+").map!string(s => s.to!int)(input);
+        
+        import std.array: join;
+
+        return any(
+            str("1"), str("2"), str("3"),
+            str("4"), str("5"), str("6"),
+            str("7"), str("8"), str("9"),
+            str("0")
+        ).oneand.map!(string[])(ss => ss.join.to!int)(input);
     }
 }

@@ -36,6 +36,16 @@ Parser!(T[]) rep(T)(Parser!T self)
     return new Rep!T(self);
 }
 
+Parser!(T[]) oneand(T)(Parser!T self)
+{
+    return new OneAnd!T(self);
+}
+
+Parser!T any(T)(Parser!T head, Parser!T[] tail...)
+{
+    return new Any!T(head, tail);
+}
+
 Parser!U map(T, U)(Parser!T self, U delegate(T) f)
 {
     return new Map!(T, U)(self, f);
@@ -215,6 +225,83 @@ unittest
     auto res3 = repp("").toSuccess;
     assert(res3.value == []);
     assert(res3.next == "");
+}
+
+class OneAnd(T): Parser!(T[])
+{
+    Parser!T parser;
+
+    this(Parser!T parser) {
+        this.parser = parser;
+    }
+
+    override
+    Result!(T[]) opCall(in string input) {
+
+        import std.array: empty;
+
+        auto res = this.parser.rep()(input);
+        if (res.isFailure) return res;
+        auto suc = res.toSuccess;
+        if (suc.value.empty) return failure!(T[])("expected at least one element, but nothing.", input);
+        return res;
+    }
+}
+
+unittest
+{
+    auto repp = str("Hello").oneand!string;
+
+    auto res1 = repp("HelloHelloHello").toSuccess;
+    assert(res1.value == ["Hello", "Hello", "Hello"]);
+    assert(res1.next == "");
+
+    auto res2 = repp("HelloHelloHelloWorld").toSuccess;
+    assert(res2.value == ["Hello", "Hello", "Hello"]);
+    assert(res2.next == "World");
+
+    auto res3 = repp("");
+    assert(res3.isFailure);
+}
+
+class Any(T): Parser!T
+{
+    Parser!T[] parsers;
+
+    this(Parser!T parser, Parser!T[] parsers...) {
+        this.parsers = [parser] ~ parsers;
+    }
+
+    override
+    Result!T opCall(in string input) {
+        foreach (parser; parsers) {
+            auto res = parser(input);
+            if (res.isSuccess) {
+                return res;
+            }
+        }
+        return failure!T("expected: " ~ parsers[0].toString, input);
+    }
+}
+
+unittest
+{
+    auto abc = any(str("A"), str("B"), str("C"));
+    auto res1 = abc("A").toSuccess;
+    assert(res1.value == "A");
+    auto res2 = abc("C").toSuccess;
+    assert(res2.value == "C");
+    auto res3 = abc("D");
+    assert(res3.isFailure);
+
+    import std.array, std.algorithm, std.range, std.conv;
+    auto nums = any(str("0"), str("1"), str("2"), str("3"), str("4"), str("5"), str("6"), str("7"), str("8"), str("9"));
+    auto res4 = nums("42").toSuccess;
+    assert(res4.value == "4");
+    auto res5 = nums("99").toSuccess;
+    assert(res5.value == "9");
+    auto res6 = nums("hoge");
+    assert(res6.isFailure);
 }
 
 class Map(T, U): Parser!U
