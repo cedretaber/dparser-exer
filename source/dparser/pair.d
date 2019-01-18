@@ -1,16 +1,10 @@
 module dparser.pair;
 
 import std.conv : to;
+import std.typecons: Tuple;
 
-struct Pair(X, Y)
-{
-    X left;
-    Y right;
-
-    @property
-    string toString() {
-        return "<" ~ left.to!string ~ ", " ~ right.to!string ~ ">";
-    } 
+template Pair(X, Y) {
+    alias Pair = Tuple!(X, "left", Y, "right");
 }
 
 Pair!(X, Y) pair(X, Y)(X x, Y y)
