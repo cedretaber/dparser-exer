@@ -59,7 +59,7 @@ class P: Parser!int
 
     override
     Result!int opCall(in string input) {
-        return str("(").cat(new E).cat(str(")")).map!(PAR, int)(r => r.left.right).or(new N)(input);
+        return str("(").cat(new E).cat(str(")")).map!PAR(r => r.left.right).or(new N)(input);
     }
 }
 
@@ -70,11 +70,13 @@ class N: Parser!int
         
         import std.array: join;
 
-        return any(
-            str("1"), str("2"), str("3"),
-            str("4"), str("5"), str("6"),
-            str("7"), str("8"), str("9"),
-            str("0")
-        ).oneand.map!(string[])(ss => ss.join.to!int)(input);
+        auto numbers =
+            str("1").or(str("2")).or(str("3"))
+                .or(str("4")).or(str("5")).or(str("6"))
+                .or(str("7")).or(str("8")).or(str("9"))
+                .or(str("0"));
+
+        return numbers.cat(numbers.rep)
+            .map!(Pair!(string, string[]))(ss => ([ss.left] ~ ss.right).join.to!int)(input);
     }
 }
