@@ -55,11 +55,10 @@ class M: Parser!int
 
 class P: Parser!int
 {
-    alias PAR = Pair!(Pair!(string, int), string);
-
     override
     Result!int opCall(in string input) {
-        return str("(").cat(new E).cat(str(")")).map!PAR(r => r.left.right).or(new N)(input);
+        return str("(").cat(new E).cat(str(")"))
+            .map!(Pair!(Pair!(string, int), string))(r => r.left.right).or(new N)(input);
     }
 }
 
